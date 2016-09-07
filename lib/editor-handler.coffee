@@ -10,6 +10,7 @@ module.exports =
 
     subscribe: ->
       @selection_observer = @editor.onDidChangeSelectionRange @onRangeChange
+      @cursor_observer = @editor.onDidChangeCursorPosition @onCursorChange
       @editorElement.addEventListener 'mousedown',   @onMouseDown
       @editorElement.addEventListener 'mousemove',   @onMouseMove
       @editorElement.addEventListener 'mouseup',     @onMouseEventToHijack
@@ -20,7 +21,9 @@ module.exports =
 
     unsubscribe: ->
       @_resetState()
+      @blockStartPos = null
       @selection_observer.dispose()
+      @cursor_observer.dispose()
       @editorElement.removeEventListener 'mousedown',   @onMouseDown
       @editorElement.removeEventListener 'mousemove',   @onMouseMove
       @editorElement.removeEventListener 'mouseup',     @onMouseEventToHijack
@@ -42,7 +45,12 @@ module.exports =
         @_resetState()
         @mouseStartPos = @_screenPositionForMouseEvent(e)
         @mouseEndPos   = @mouseStartPos
+        @testPos   = @editor.getCursorBufferPosition()
         e.preventDefault()
+        if @blockStartPos
+          if @blockStartPos != @mouseStartPos
+            @mouseStartPos = @blockStartPos
+            @_selectBoxAroundCursors()
         return false
 
     onMouseMove: (e) =>
@@ -70,6 +78,9 @@ module.exports =
       if @mouseStartPos and !newVal.selection.isSingleScreenLine()
         newVal.selection.destroy()
         @_selectBoxAroundCursors()
+
+    onCursorChange: (event) =>
+      @blockStartPos = event.oldScreenPosition
 
     # -------
     # Methods
